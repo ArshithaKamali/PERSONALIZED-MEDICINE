@@ -25,6 +25,9 @@ symptom2 = {"Fatigue": 0, "Nausea": 1, "Shortness of Breath": 2}[symptom2]
 features = pd.DataFrame([[age, gender, symptom1, symptom2]],
                         columns=["Age", "Gender", "Symptom1", "Symptom2"])
 
+st.write("Feature shape:", features.shape)
+st.write("Expected shape:", model_diag.n_features_in_)
+
 if st.button("Predict"):
     pred_diagnosis = model_diag.predict(features)[0]
     pred_medicine = model_med.predict(features)[0]
