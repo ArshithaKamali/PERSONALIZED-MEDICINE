@@ -1,36 +1,41 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
-# Load models and scaler
+# Load pretrained models and scaler
 model_diag = joblib.load("diagnosis_model.pkl")
 model_med = joblib.load("medication_model.pkl")
+scaler = joblib.load("scaler.pkl")
+label_encoders = joblib.load("label_encoders.pkl")
+le_med = joblib.load("le_med.pkl")  # medication label encoder
 
 st.title("🧬 Personalized Healthcare & Medicine Recommendation")
 
-st.markdown("Enter patient details below:")
+# User input form
+st.subheader("Enter Patient Details")
 
-# Input fields
-age = st.number_input("Age", min_value=0, max_value=100, step=1)
-gender = st.selectbox("Gender", ["Male", "Female"])
-symptom1 = st.selectbox("Symptom 1", ["Headache", "Fever", "Cough"])
-symptom2 = st.selectbox("Symptom 2", ["Fatigue", "Nausea", "Shortness of Breath"])
+user_data = {}
+for col in label_encoders:
+    options = label_encoders[col].classes_
+    val = st.selectbox(f"{col}", options)
+    user_data[col] = label_encoders[col].transform([val])[0]
 
-# Sample encoding (you should match this with training encoding)
-gender = 1 if gender == "Male" else 0
-symptom1 = {"Headache": 0, "Fever": 1, "Cough": 2}[symptom1]
-symptom2 = {"Fatigue": 0, "Nausea": 1, "Shortness of Breath": 2}[symptom2]
+# For numerical columns
+for col in ["Age", "Weight_kg", "Height_cm", "BMI", "Recovery_Time_Days"]:
+    user_data[col] = st.number_input(f"{col}", value=0.0)
 
-# Create feature array
-features = pd.DataFrame([[age, gender, symptom1, symptom2]],
-                        columns=["Age", "Gender", "Symptom1", "Symptom2"])
+# Convert to DataFrame
+input_df = pd.DataFrame([user_data])
 
-st.write("Feature shape:", features.shape)
-st.write("Expected shape:", model_diag.n_features_in_)
+# Scale input
+scaled_input = scaler.transform(input_df)
 
+# Predict
 if st.button("Predict"):
-    pred_diagnosis = model_diag.predict(features)[0]
-    pred_medicine = model_med.predict(features)[0]
+    diagnosis = model_diag.predict(scaled_input)[0]
+    med_encoded = model_med.predict(scaled_input)[0]
+    medication = le_med.inverse_transform([med_encoded])[0]
 
-    st.success(f"🧾 Predicted Diagnosis: **{pred_diagnosis}**")
-    st.success(f"💊 Recommended Medicine: **{pred_medicine}**")
+    st.success(f"🧾 Diagnosis: **{diagnosis}**")
+    st.success(f"💊 Recommended Medicine: **{medication}**")
